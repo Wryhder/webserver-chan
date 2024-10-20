@@ -1,6 +1,9 @@
 // Access networking functionality
 import * as net from "net";
 
+const HOST = "127.0.0.1";
+const PORT = 1234;
+
 // A promise-based API for TCP sockets
 type TCPConn = {
     // JS socket object
@@ -139,8 +142,20 @@ async function serveClient(socket: net.Socket): Promise<void> {
 // Create a listening socket
 let server = net.createServer();
 
-server.on("error", (err: Error) => { throw err; });
+// retry if another server is listening on the requested address
+server.on('error', (err: NodeJS.ErrnoException) => {
+    if (err.code === 'EADDRINUSE') {
+        console.error('Address in use, retrying...');
+        setTimeout(() => {
+            server.close();
+            server.listen(PORT, HOST);
+        }, 1000);
+    } else {
+        throw err;
+    }
+});
+
 server.on("connection", handleNewConn);
 
-server.listen({host: "127.0.0.1", port: 1234});
+server.listen({host: HOST, port: PORT});
 
