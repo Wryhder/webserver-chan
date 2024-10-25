@@ -1,23 +1,8 @@
-// Access networking functionality
 import * as net from "net";
+import { Buffer } from "node:buffer";
 
-const HOST = "127.0.0.1";
-const PORT = 1234;
-
-// A promise-based API for TCP sockets
-type TCPConn = {
-    // JS socket object
-    socket: net.Socket;
-    // received from "error" event
-    err: null | Error;
-    // EOF, from "end" event
-    ended: boolean;
-    // the callbacks for the current read's promise
-    reader: null | {
-        resolve: (value: Buffer) => void,
-        reject: (reason: Error) => void,
-    };
-};
+import { HOST, PORT } from "../data";
+import { TCPConn, DynamicBuf } from "../types";
 
 // Create a wrapper for net.Socket
 function socketInit(socket: net.Socket): TCPConn {
@@ -110,6 +95,96 @@ function socketWrite(conn: TCPConn, data: Buffer): Promise<void> {
     });
 }
 
+// grow DynamicBuf capacity by the specified power
+function expandBufferCap(buf: DynamicBuf, newLength: number, power: number): Buffer {
+    const oldLength = buf.data.length;
+    let cap = Math.max(oldLength, 32);  // where's the 32 coming from?
+
+    while (cap < newLength) {
+        cap *= power;
+    }
+
+    const grownBuf = Buffer.alloc(cap);
+    return grownBuf;
+}
+
+// append data to DynamicBuf
+function bufferPush(buf: DynamicBuf, data: Buffer): void {
+    const newLength = buf.length + data.length;
+    if (buf.data.length < newLength) {
+        // grow the capacity by a power of 2
+        const grownBuf = expandBufferCap(buf, newLength, 2);
+        // copy data to grown Buffer
+        buf.data.copy(grownBuf, 0, 0);
+        buf.data = grownBuf;
+    }
+
+    data.copy(buf.data, buf.length, 0);
+    buf.length = newLength;
+}
+
+// remove data from the front of the Buffer (?)
+function bufferPop(buf: DynamicBuf, length: number): void {
+    buf.data.copyWithin(0, length, buf.length);
+    buf.length -= length;
+}
+
+// Checks for a complete message in the buffer
+function collectMessage(buf: DynamicBuf): null | Buffer {
+    // messages are separated by "\n"
+    const index = buf.data.subarray(0, buf.length).indexOf("\n");
+    if (index < 0) {
+        return null;  // not complete
+    }
+
+    // make a copy of the message
+    // and move the remaining data to the front
+    const msg = Buffer.from(buf.data.subarray(0, index + 1));
+    bufferPop(buf, index + 1);
+    return msg;
+}
+
+async function processMessage(msg: Buffer, socket: net.Socket, conn: TCPConn) {;
+    if (msg.equals(Buffer.from("quit\n"))) {
+        await socketWrite(conn, Buffer.from("\n"));
+        socket.destroy();
+        return;
+    } else {
+        const reply = Buffer.concat([Buffer.from("Echo: "), msg]);
+        await socketWrite(conn, reply);
+    }
+}
+
+// echo server
+async function serveClient(socket: net.Socket): Promise<void> {
+    const conn: TCPConn = socketInit(socket);
+    const buf: DynamicBuf = {
+        data: Buffer.alloc(0),
+        length: 0,
+    };
+    
+    while(true) {
+        // attempt to get one (1) message from the buffer
+        const msg: null | Buffer = collectMessage(buf);
+        if (!msg) {
+            // we need more data
+            const data: Buffer = await socketRead(conn);
+            bufferPush(buf, data);
+
+            if (data.length === 0) {  // EOF?
+                console.log("end connection");
+                return;
+            }
+
+            // we got some daat, try again
+            continue;
+        }
+
+        // process the message and send the response
+        await processMessage(msg, socket, conn);
+    }
+}
+
 async function handleNewConn(socket: net.Socket): Promise<void> {
     console.log("new connection", socket.remoteAddress, socket.remotePort);
 
@@ -119,23 +194,6 @@ async function handleNewConn(socket: net.Socket): Promise<void> {
         console.error("exception:", error);
     } finally {
         socket.destroy();
-    }
-}
-
-// echo server
-async function serveClient(socket: net.Socket): Promise<void> {
-    const conn: TCPConn = socketInit(socket);
-
-    while(true) {
-        const data = await socketRead(conn);
-
-        if (data.length === 0) {  // EOF
-            console.log("end connection");
-            break;
-        }
-
-        console.log("data", data);
-        await socketWrite(conn, data);
     }
 }
 
@@ -156,6 +214,5 @@ server.on('error', (err: NodeJS.ErrnoException) => {
 });
 
 server.on("connection", handleNewConn);
-
 server.listen({host: HOST, port: PORT});
 
