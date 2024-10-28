@@ -126,6 +126,19 @@ function bufferPop(buf: DynamicBuf, length: number): void {
     buf.length -= length;
 }
 
+// TODO:
+// NB: Deferring the data movement will require tracking the beginning of the data,
+// so we’ll need to modify how we're currently retrieving data from the buffer.
+
+// // Checks if the wasted space in front of the buffer has reached a threshold (1/2 capacity).
+// // Since messages are copied starting from the front of the buffer without the remaining data
+// // being moved forward (to overwrite processed data), we will have already-processed messages taking up
+// // space in the buffer. This function is used to check how much space is wasted so that it can be freed up.
+// function shouldMoveData(buf: DynamicBuf):boolean {}
+
+// // Moves all unprocessed data in the Bufer to the front
+// function shiftBufferData() {}
+
 // Checks for a complete message in the buffer
 function collectMessage(buf: DynamicBuf): null | Buffer {
     // messages are separated by "\n"
