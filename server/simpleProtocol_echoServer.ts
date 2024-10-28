@@ -144,7 +144,7 @@ function collectMessage(buf: DynamicBuf): null | Buffer {
     return msg;
 }
 
-async function processMessage(msg: Buffer, socket: net.Socket, conn: TCPConn) {;
+async function processMessage(msg: Buffer, socket: net.Socket, conn: TCPConn) {
     if (msg.equals(Buffer.from("quit\n"))) {
         await socketWrite(conn, Buffer.from("\n"));
         socket.destroy();
@@ -176,7 +176,7 @@ async function serveClient(socket: net.Socket): Promise<void> {
                 return;
             }
 
-            // we got some daat, try again
+            // we got some data, try again
             continue;
         }
 
