@@ -155,7 +155,9 @@ async function serveClient(socket: net.Socket): Promise<void> {
 // function socketAccept(listener: TCPListener): Promise<TCPConn> {};
 
 // Create a listening socket
-let server = net.createServer();
+let server = net.createServer({
+    pauseOnConnect: true,  // required by `TCPConn`
+});
 
 // retry if another server is listening on the requested address
 server.on('error', (err: NodeJS.ErrnoException) => {
