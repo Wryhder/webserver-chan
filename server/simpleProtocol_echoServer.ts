@@ -143,6 +143,8 @@ function collectMessage(buf: DynamicBuf): null | Buffer {
 
 async function processMessage(msg: Buffer, socket: net.Socket, conn: TCPConn) {
     if (msg.equals(Buffer.from("quit\n"))) {
+        console.log("closing connection...");
+        
         await socketWrite(conn, Buffer.from("\n"));
         socket.destroy();
         return;
