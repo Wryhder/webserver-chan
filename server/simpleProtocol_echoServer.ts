@@ -14,14 +14,14 @@ function socketInit(socket: net.Socket): TCPConn {
     };
 
     socket.on("data", (data: Buffer) => {
-        console.log("data", data);
-        socket.write(data); // echo back received data
+        console.log("Received data: ", data);
 
-        // close connection if data contains a "q"
-        if (data.includes("q")) {
-            console.log("closing...");
-            socket.end(); // send FIN and close the connection
-        }
+        console.assert(conn.reader);
+        // pause the "data" event until the next read
+        conn.socket.pause();
+        // fulfill the promise of the current read
+        conn.reader!.resolve(data);
+        conn.reader = null;
     });
 
     socket.on("end", () => {
