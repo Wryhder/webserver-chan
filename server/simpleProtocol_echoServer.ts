@@ -31,9 +31,6 @@ function socketInit(socket: net.Socket): TCPConn {
         if (conn.reader) {
             conn.reader.resolve(Buffer.from(""));  // EOF
             conn.reader = null;
-
-            // FIN received, so connection will be auto-closed
-            console.log("EOF");
         }
     });
 
