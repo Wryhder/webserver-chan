@@ -120,7 +120,9 @@ function bufferPush(buf: DynamicBuf, data: Buffer): void {
     buf.length = newLength;
 }
 
-// remove data from the front of the Buffer (?)
+// remove data from the front of the Buffer
+// (i.e, move any remaining data to the front of the buffer
+// after extracting a complete message)
 function bufferPop(buf: DynamicBuf, length: number): void {
     buf.data.copyWithin(0, length, buf.length);
     buf.length -= length;
