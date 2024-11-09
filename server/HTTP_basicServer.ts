@@ -563,6 +563,7 @@ async function handleNewConn(socket: net.Socket): Promise<void> {
 // Create a listening socket
 let server = net.createServer({
     pauseOnConnect: true,  // required by `TCPConn`
+    noDelay: true, // TCP_NODELAY
 });
 
 // retry if another server is listening on the requested address
