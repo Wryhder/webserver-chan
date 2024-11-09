@@ -491,6 +491,8 @@ class HTTPError extends Error {
 -----------------------------------------END----------------------------------------------
 */
 
+// TODO: Fix bug where server successfully receives messages from clients
+// but clients do not receive sent responses.
 async function serveClient(conn: TCPConn): Promise<void> {
     const buf: DynamicBuf = {
         data: Buffer.alloc(0),
