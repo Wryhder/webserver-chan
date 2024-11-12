@@ -435,7 +435,17 @@ function encodeHTTPRes(res: HTTPRes): Buffer {
         return buffers.reduce((prev, buf) => Buffer.concat([prev, delimiter, buf]));
     })(res.headers);
 
-    const header = Buffer.concat([statusLine, delimiter, joinedHeaderFields]);
+    /* 
+    Not sure if the header is the right place to add "\r\n\r\n" but including it
+    fixed the bug where the server received messages successfully from clients
+    but clients did not receive sent responses (or, I suppose, more specifically, did not receive
+    the response body?) since there was no "\r\n\r\n" or similar to indicate the start of the body.
+    Well, not sure exactly, but this seems like the general gist of it. 
+    */
+    const header = Buffer.concat([
+        statusLine, delimiter, joinedHeaderFields,
+        delimiter, delimiter
+    ]);
 
     return header;
 }
@@ -491,8 +501,6 @@ class HTTPError extends Error {
 -----------------------------------------END----------------------------------------------
 */
 
-// TODO: Fix bug where server successfully receives messages from clients
-// but clients do not receive sent responses.
 async function serveClient(conn: TCPConn): Promise<void> {
     const buf: DynamicBuf = {
         data: Buffer.alloc(0),
